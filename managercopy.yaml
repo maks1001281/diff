@@ -16,13 +16,18 @@ spec:
     metadata:
       labels:
         {{- include "install.clusterLabels" . | nindent 8 }}
-        {{- include "install.customPodLabels" . | nindent 8 }}
     spec:
       {{- include "install.imagePullSecrets" . | indent 6 }}
       serviceAccountName: {{ include "install.serviceAccountName" . }}
+      {{- if hasKey .Values "tolerations" }}
+      tolerations: {{ toYaml .Values.tolerations | nindent 8 }}
+      {{- end }}
       containers:
       - name: operator
         image: {{ required ".Values.controllerImages.cluster is required" .Values.controllerImages.cluster | quote }}
+        {{- with .Values.resources }}
+        resources: {{ toYaml . | nindent 10 }}
+        {{- end }}
         env:
         - name: CRUNCHY_DEBUG
           value: {{ .Values.debug | ne false | quote }}
@@ -41,12 +46,7 @@ spec:
         - name: CHECK_FOR_UPGRADES
           value: "false"
         {{- end }}
-        {{- if .Values.resources.controller }}
-        resources:
-        {{- toYaml .Values.resources.controller | nindent 10 }}
-        {{- end }}
         securityContext:
           allowPrivilegeEscalation: false
-          capabilities: { drop: [ALL] }
           readOnlyRootFilesystem: true
           runAsNonRoot: true
